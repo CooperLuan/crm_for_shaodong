@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import logbook
@@ -14,17 +15,9 @@ DATA = {
 }
 
 
-@app.route('/')
-def index(methods=['GET', 'POST']):
-    return render_template('index.html')
-
-
-@app.route('/api/upload', methods=['GET', 'POST'])
-def api_upload():
+def _setup(stream):
     global DATA
-    ufile = request.files
-    obj = ufile['file']
-    df = pd.read_excel(obj, header=1).fillna(method='pad')
+    df = pd.read_excel(stream, header=1).fillna(method='pad')
     df = df.drop(
         df[df['年月'].apply(lambda x: not isinstance(x, datetime))].index)
     df = df.drop(df[df['区域'].apply(lambda x: '总' in x)].index)
@@ -39,6 +32,18 @@ def api_upload():
         DATA['df'].columns[i]
         for i, dt in enumerate(DATA['df'].dtypes)
         if dt != np.dtype('object')]
+
+
+@app.route('/')
+def index(methods=['GET', 'POST']):
+    return render_template('index.html')
+
+
+@app.route('/api/upload', methods=['GET', 'POST'])
+def api_upload():
+    ufile = request.files
+    obj = ufile['file']
+    _setup(obj)
     return render_template('index.html')
 
 
@@ -171,6 +176,8 @@ def api_describe():
 
 
 def main():
+    if os.path.exists('files/data_raw.xlsx'):
+        _setup('files/data_raw.xlsx')
     app.run(
         host='0.0.0.0',
         port=9871,
