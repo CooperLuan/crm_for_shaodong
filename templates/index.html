@@ -150,7 +150,7 @@ $(function() {
                 div.appendTo($("#form-selectors"));
             };
             $(".select-df-filter").change(function(e) {
-                render_describe_charts;
+                render_describe_charts();
             })
             if (callback !== undefined) {
                 callback();

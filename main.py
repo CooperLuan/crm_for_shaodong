@@ -84,13 +84,27 @@ def api_describe():
         'tables': [],
         'charts': [],
     }
-    # 总计
     df = DATA['df']
+
+    # filter
+    arg = request.args.get('年月')
+    if arg and arg != '全部':
+        df = df[df['年月'] == arg]
+
+    arg = request.args.get('区域')
+    if arg and arg != '全部':
+        df = df[df['区域'] == arg]
+
+    arg = request.args.get('专营店名称')
+    if arg and arg != '全部':
+        df = df[df['专营店名称'] == arg]
+
+    # 总计
     _df = df.sum()[DATA['sum_cols']]
     result['tables'].append({
         'name': '总计',
         'columns': _df.index.tolist(),
-        'rows': _df.values.tolist(),
+        'rows': [_df.values.tolist()],
     })
 
     # 按日期
