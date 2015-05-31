@@ -17,11 +17,13 @@ DATA = {
 
 def _setup(stream):
     global DATA
-    df = pd.read_excel(stream, header=1).fillna(method='pad')
-    df = df.drop(
-        df[df['年月'].apply(lambda x: not isinstance(x, datetime))].index)
+    df = pd.read_excel(stream, header=0).fillna(method='pad')
+    log.info(df.columns)
+    log.info(df.dtypes)
+    df = df.drop(df[df['年月'].apply(lambda x: not isinstance(x, datetime))].index)
     df = df.drop(df[df['区域'].apply(lambda x: '总' in x)].index)
     df['年月'] = df['年月'].apply(lambda x: x.strftime('%Y-%m-%d'))
+    df = df.replace('(空白)', '其他')
     df['专营店简称'] = df['区域'] + ' ' + df['专营店简称']
     DATA['df'] = df
     DATA['select_cols'] = [
@@ -92,18 +94,26 @@ def api_describe():
     df = DATA['df']
 
     # filter
-    arg = request.args.get('年月')
-    if arg and arg != '全部':
-        df = df[df['年月'] == arg]
+    args = request.args.getlist('年月') or []
+    if '全部' in args:
+        del args[args.index('全部')]
+    if args:
+        log.info('filter by 年月 %s' % args)
+        df = df[df['年月'].isin(args)]
 
-    arg = request.args.get('区域')
-    if arg and arg != '全部':
-        df = df[df['区域'] == arg]
+    args = request.args.getlist('区域') or []
+    if '全部' in args:
+        del args[args.index('全部')]
+    if args:
+        log.info('filter by 区域 %s' % args)
+        df = df[df['区域'].isin(args)]
 
-    arg = request.args.get('专营店简称')
-    arg = arg
-    if arg and arg != '全部':
-        df = df[df['专营店简称'] == arg]
+    args = request.args.getlist('专营店简称') or []
+    if '全部' in args:
+        del args[args.index('全部')]
+    if args:
+        log.info('filter by 专营店简称 %s' % args)
+        df = df[df['专营店简称'].isin(args)]
 
     # 总计
     _df = df.sum()[DATA['sum_cols']]
@@ -141,31 +151,17 @@ def api_describe():
             'data': _df.to_records(index=False).tolist(),
         }],
     })
-    # 按照大区域分布的饼图
-    _df = df.groupby('区域').sum().reset_index()
-    _df['大区域'] = _df['区域'].apply(lambda x: '(' not in x and x[:2] or x)
-    _df = _df.groupby('大区域').sum().reset_index()[['大区域', '实际交车']]
-    result['charts'].append({
-        'name': '不同大区域的实际交车比例',
-        'type': 'pie',
-        'series': [{
-            'type': 'pie',
-            'name': '不同区域的实际交车比例',
-            'data': _df.to_records(index=False).tolist(),
-        }],
-    })
 
     # 柱状图
-    df['大区域'] = df['区域'].apply(lambda x: ')' not in x and x[:2] or x)
-    xCatetories = df['大区域'].unique().tolist()
+    xCatetories = df['区域'].unique().tolist()
     result['charts'].append({
         'col-md': 12,
         'xCatetories': xCatetories,
         'type': 'bar',
-        'name': '不同大区目标/实际/预测图例',
+        'name': '不同区域目标/实际/预测图例',
         'series': [{
             'name': _col,
-            'data': [int(df[df['大区域'] == x][_col].sum()) for x in xCatetories],
+            'data': [int(df[df['区域'] == x][_col].sum()) for x in xCatetories],
         } for _col in [
             '目标交车', '目标提车',
             '实际订单', '实际交车', '实际提车',

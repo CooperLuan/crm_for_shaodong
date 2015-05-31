@@ -5,6 +5,7 @@
     <title>订交提 实际预测与目标更新</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="http://cdn.staticfile.org/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/static/bootstrap-multiselect/css/bootstrap-multiselect.css">
 </head>
 <body>
 <nav class="navbar navbar-default">
@@ -98,6 +99,7 @@
 <script type="text/javascript" src="http://cdn.staticfile.org/bootbox.js/4.3.0/bootbox.min.js"></script>
 <script type="text/javascript" src="http://cdn.staticfile.org/sugar/1.4.1/sugar-full.min.js"></script>
 <script type="text/javascript" src="http://cdn.staticfile.org/highcharts/4.0.4/highcharts.js"></script>
+<script type="text/javascript" src="/static/bootstrap-multiselect/js/bootstrap-multiselect.js"></script>
 <script type="text/javascript">
 $(function() {
 
@@ -110,6 +112,10 @@ $(function() {
     });
 
     load_selectors(render_describe_charts);
+
+    $("#btn-update").click(function() {
+        render_describe_charts();
+    })
 
     function upload_file(data, callback) {
         $.ajax({
@@ -142,14 +148,16 @@ $(function() {
                     "class": "form-group",
                 });
                 $("<label/>", {
-                    "for": data.selectors[i].name,
+                    "html": data.selectors[i].name,
                 }).appendTo(div);
                 var select = $("<select/>", {
                     name: data.selectors[i].name,
                     "class": "form-control select-df-filter",
+                    multiple: "multiple",
                     html: $("<option/>", {
                         html: "全部",
                         value: null,
+                        selected: "selected",
                     })
                 });
                 for (var j = 0; j < data.selectors[i].values.length; j++) {
@@ -163,6 +171,7 @@ $(function() {
             $(".select-df-filter").change(function(e) {
                 render_describe_charts();
             })
+            $(".select-df-filter").multiselect();
             if (callback !== undefined) {
                 callback();
             };
@@ -233,7 +242,14 @@ $(function() {
                                 dataLabels: {
                                     enabled: false
                                 },
-                                showInLegend: true
+                                showInLegend: true,
+                                dataLabels: {
+                                    enabled: true,
+                                    format: '<b>{point.name}</b>: {point.total}',
+                                    style: {
+                                        color: (Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black'
+                                    }
+                                }
                             }
                         },
                         series: data_chart.series,
@@ -247,7 +263,7 @@ $(function() {
                     var option = {
                         chart: {
                             type: 'bar',
-                            height: 800,
+                            height: 1200,
                         },
                         title: {
                             text: data_chart.name,
