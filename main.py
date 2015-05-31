@@ -95,9 +95,10 @@ def api_describe():
     if arg and arg != '全部':
         df = df[df['区域'] == arg]
 
-    arg = request.args.get('专营店名称')
+    arg = request.args.get('专营店简称')
+    arg = arg
     if arg and arg != '全部':
-        df = df[df['专营店名称'] == arg]
+        df = df[df['专营店简称'] == arg]
 
     # 总计
     _df = df.sum()[DATA['sum_cols']]
@@ -121,6 +122,50 @@ def api_describe():
         'name': '按区域',
         'columns': _df.columns.tolist(),
         'rows': _df.to_records(index=False).tolist(),
+    })
+
+    # 图形
+    # 按区域的饼图
+    _df = df.groupby('区域').sum()[['实际交车']].reset_index()
+    result['charts'].append({
+        'name': '不同小区域的实际交车比例',
+        'type': 'pie',
+        'series': [{
+            'type': 'pie',
+            'name': '不同区域的实际交车比例',
+            'data': _df.to_records(index=False).tolist(),
+        }],
+    })
+    # 按照大区域分布的饼图
+    _df = df.groupby('区域').sum().reset_index()
+    _df['大区域'] = _df['区域'].apply(lambda x: '(' not in x and x[:2] or x)
+    _df = _df.groupby('大区域').sum().reset_index()[['大区域', '实际交车']]
+    result['charts'].append({
+        'name': '不同大区域的实际交车比例',
+        'type': 'pie',
+        'series': [{
+            'type': 'pie',
+            'name': '不同区域的实际交车比例',
+            'data': _df.to_records(index=False).tolist(),
+        }],
+    })
+
+    # 柱状图
+    df['大区域'] = df['区域'].apply(lambda x: ')' not in x and x[:2] or x)
+    xCatetories = df['大区域'].unique().tolist()
+    result['charts'].append({
+        'col-md': 12,
+        'xCatetories': xCatetories,
+        'type': 'bar',
+        'name': '不同大区目标/实际/预测图例',
+        'series': [{
+            'name': _col,
+            'data': [int(df[df['大区域'] == x][_col].sum()) for x in xCatetories],
+        } for _col in [
+            '目标交车', '目标提车',
+            '实际订单', '实际交车', '实际提车',
+            '预测交车', '预测提车',
+        ]],
     })
     return jsonify(**result)
 

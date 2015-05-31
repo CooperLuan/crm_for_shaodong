@@ -81,6 +81,17 @@
             </div>
         </div>
     </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">图表</div>
+                <div class="panel-body">
+                    <div class="row" id="section-charts">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <script type="text/javascript" src="http://cdn.staticfile.org/jquery/2.1.1-rc2/jquery.min.js"></script>
 <script type="text/javascript" src="http://cdn.staticfile.org/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
@@ -160,6 +171,7 @@ $(function() {
 
     function render_describe_charts(callback) {
         $(".section-table").remove();
+        $("#section-charts").html("");
         var last_insert_cursor = $(".section-table-example");
         $.get('/api/describe?' + $("#form-selectors").serialize(), {}, function(data) {
             // render tables
@@ -191,6 +203,107 @@ $(function() {
                 };
                 example.insertAfter(last_insert_cursor);
                 last_insert_cursor = $(".section-table:last");
+            };
+
+            // render charts
+            for (var i = 0; i < data.charts.length; i++) {
+                var data_chart = data.charts[i];
+
+                if (data_chart.type === 'pie') {
+                    var option = {
+                        chart: {
+                            plotBackgroundColor: null,
+                            plotBorderWidth: null,
+                            plotShadow: false,
+                            type: data_chart.type,
+                        },
+                        title: {
+                            text: data_chart.name,
+                        },
+                        credits: {
+                            enabled: false,
+                        },
+                        tooltip: {
+                            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+                        },
+                        plotOptions: {
+                            pie: {
+                                allowPointSelect: true,
+                                cursor: 'pointer',
+                                dataLabels: {
+                                    enabled: false
+                                },
+                                showInLegend: true
+                            }
+                        },
+                        series: data_chart.series,
+                    };
+                    var c = $("<div/>", {
+                        class: "col-md-6",
+                    });
+                    c.highcharts(option);
+                    c.appendTo($("#section-charts"));
+                } else if (data_chart.type === 'bar') {
+                    var option = {
+                        chart: {
+                            type: 'bar',
+                            height: 800,
+                        },
+                        title: {
+                            text: data_chart.name,
+                        },
+                        xAxis: {
+                            categories: data_chart.xCatetories,
+                            title: {
+                                text: null
+                            }
+                        },
+                        yAxis: {
+                            min: 0,
+                            title: {
+                                text: '数量',
+                                align: 'high'
+                            },
+                            labels: {
+                                overflow: 'justify'
+                            }
+                        },
+                        tooltip: {
+                            // valueSuffix: ' millions'
+                        },
+                        plotOptions: {
+                            bar: {
+                                dataLabels: {
+                                    enabled: true
+                                },
+                            },
+                            series: {
+                                pointWidth: 8,
+                                pointPadding: 0.2,
+                            }
+                        },
+                        legend: {
+                            layout: 'vertical',
+                            align: 'right',
+                            verticalAlign: 'top',
+                            x: -40,
+                            y: 100,
+                            floating: true,
+                            borderWidth: 1,
+                            backgroundColor: ((Highcharts.theme && Highcharts.theme.legendBackgroundColor) || '#FFFFFF'),
+                            shadow: true
+                        },
+                        credits: {
+                            enabled: false
+                        },
+                        series: data_chart.series,
+                    };
+                    var c = $("<div/>", {
+                        class: "col-md-" + (data_chart['col-md'] || 6),
+                    });
+                    c.highcharts(option);
+                    c.appendTo($("#section-charts"));
+                }
             };
         }, 'json');
     }
