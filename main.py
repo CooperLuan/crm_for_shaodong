@@ -108,6 +108,13 @@ def api_describe():
         log.info('filter by 区域 %s' % args)
         df = df[df['区域'].isin(args)]
 
+    args = request.args.getlist('小区') or []
+    if '全部' in args:
+        del args[args.index('全部')]
+    if args:
+        log.info('filter by 小区 %s' % args)
+        df = df[df['小区'].isin(args)]
+
     args = request.args.getlist('专营店简称') or []
     if '全部' in args:
         del args[args.index('全部')]
