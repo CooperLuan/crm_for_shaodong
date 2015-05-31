@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>订交提 实际预测与目标更新</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="http://cdn.staticfile.org/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/">订交提 实际预测与目标更新</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="navbar-collapse-1">
+      <ul class="nav navbar-nav">
+        <!-- <li class="active"><a href="#">Link <span class="sr-only">(current)</span></a></li> -->
+        <!-- <li><a href="#">Link</a></li> -->
+        <!--
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Dropdown <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a href="#">Action</a></li>
+          </ul>
+        </li>
+        -->
+      </ul>
+      <form id="form-upload" class="navbar-form navbar-left" role="search" method="POST" action="/api/upload">
+        <div class="form-group">
+          <input type="file" class="form-control" name="file">
+        </div>
+        <button type="submit" id="btn-upload" class="btn btn-default">上传 Excel 数据</button>
+      </form>
+      <ul class="nav navbar-nav navbar-right">
+        <!-- <li><a href="#">Link</a></li> -->
+        <!-- <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">Dropdown <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a href="#">Action</a></li>
+            <li><a href="#">Another action</a></li>
+            <li><a href="#">Something else here</a></li>
+            <li class="divider"></li>
+            <li><a href="#">Separated link</a></li>
+          </ul>
+        </li> -->
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+<div class="container-fluid container-body">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">筛选</div>
+                <div class="panel-body">
+                    <form class="form-inline" id="form-selectors">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row section-table-example" style="display: none">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Panel heading</div>
+                <!-- Table -->
+                <table class="table table-striped table-bordered">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="http://cdn.staticfile.org/jquery/2.1.1-rc2/jquery.min.js"></script>
+<script type="text/javascript" src="http://cdn.staticfile.org/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="http://cdn.staticfile.org/bootbox.js/4.3.0/bootbox.min.js"></script>
+<script type="text/javascript" src="http://cdn.staticfile.org/sugar/1.4.1/sugar-full.min.js"></script>
+<script type="text/javascript" src="http://cdn.staticfile.org/highcharts/4.0.4/highcharts.js"></script>
+<script type="text/javascript">
+$(function() {
+
+    $("#form-upload").submit(function(e) {
+        e.preventDefault();
+        var data = new FormData(this);
+        upload_file(data, function() {
+            load_selectors(render_describe_charts);
+        });
+    });
+
+    load_selectors(render_describe_charts);
+
+    function upload_file(data, callback) {
+        $.ajax({
+            url: '/api/upload',
+            type: 'POST',
+            data: data,
+            contentType: false,
+            cache: false,
+            processData: false,
+        }).done(function(result){
+            console.log("Success: Files sent!");
+            if (callback !== undefined) {
+                callback();
+            }
+        }).fail(function(){
+            bootbox.alert("An error occurred, the files couldn't be sent!");
+        });
+    }
+
+    function load_selectors(callback) {
+        $("#form-selectors").html("");
+        $.get('/api/selectors', {}, function(data){
+            if (data.selectors === null) {
+                bootbox.alert("请先上传数据");
+                return;
+            }
+            for (var i = 0; i < data.selectors.length; i++) {
+                data.selectors[i]
+                var div = $("<div/>", {
+                    "class": "form-group",
+                });
+                $("<label/>", {
+                    "for": data.selectors[i].name,
+                }).appendTo(div);
+                var select = $("<select/>", {
+                    name: data.selectors[i].name,
+                    "class": "form-control select-df-filter",
+                    html: $("<option/>", {
+                        html: "全部",
+                        value: null,
+                    })
+                });
+                for (var j = 0; j < data.selectors[i].values.length; j++) {
+                    $("<option/>", {
+                        html: data.selectors[i].values[j],
+                    }).appendTo(select);
+                };
+                select.appendTo(div);
+                div.appendTo($("#form-selectors"));
+            };
+            $(".select-df-filter").change(function(e) {
+                render_describe_charts;
+            })
+            if (callback !== undefined) {
+                callback();
+            };
+        }, 'json');
+    }
+
+    function render_describe_charts(callback) {
+        $(".section-table").remove();
+        var last_insert_cursor = $(".section-table-example");
+        $.get('/api/describe?' + $("#form-selectors").serialize(), {}, function(data) {
+            // render tables
+            for (var i = 0; i < data.tables.length; i++) {
+                var example = $(".section-table-example").clone(true);
+                example.attr("class", "row section-table");
+                example.attr("style", "");
+                var data_table = data.tables[i];
+                $(example).find(".panel-heading").html(data_table.name);
+                var div_table = $(example).find("table");
+                $(div_table).find("thead").html("");
+                $(div_table).find("tbody").html("");
+                var tr = $("<tr/>");
+                for (var k = 0; k < data_table.columns.length; k++) {
+                    $("<th/>", {
+                        html: data_table.columns[k],
+                    }).appendTo(tr);
+                };
+                tr.appendTo($(div_table).find("thead"));
+                for (var k = 0; k < data_table.rows.length; k++) {
+                    var tr = $("<tr/>");
+                    var data_row = data_table.rows[k];
+                    for (var j = 0; j < data_row.length; j++) {
+                        $("<td/>", {
+                            html: data_row[j],
+                        }).appendTo(tr);
+                    };
+                    tr.appendTo($(div_table).find("tbody"));
+                };
+                example.insertAfter(last_insert_cursor);
+                last_insert_cursor = $(".section-table:last");
+            };
+        }, 'json');
+    }
+})
+</script>
+</body>
+</html>
